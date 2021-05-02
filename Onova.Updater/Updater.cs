@@ -41,6 +41,11 @@ namespace Onova.Updater
         {
             var updateeDirPath = Path.GetDirectoryName(_updateeFilePath);
 
+            if(updateeDirPath == default)
+            {
+                throw new ApplicationException("Missing updateeDirPath");
+            }
+
             // Wait until updatee is writable to ensure all running instances have exited
             WriteLog("Waiting for all running updatee instances to exit...");
             while (!FileEx.CheckWriteAccess(_updateeFilePath))

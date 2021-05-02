@@ -53,7 +53,7 @@ namespace Onova.Services
                 // Check resource type
                 var resourceType = resourceJson.GetProperty("@type").GetString();
                 if (string.Equals(resourceType, "PackageBaseAddress/3.0.0", StringComparison.OrdinalIgnoreCase))
-                    return resourceJson.GetProperty("@id").GetString();
+                    return resourceJson.GetProperty("@id").GetString() ?? "";
             }
 
             // Resource not found

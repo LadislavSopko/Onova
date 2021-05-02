@@ -6,6 +6,8 @@
     <IsTestProject>true</IsTestProject>
     <CollectCoverage>true</CollectCoverage>
     <CoverletOutputFormat>opencover</CoverletOutputFormat>
+    <AssemblyVersion>2.6.2.21122</AssemblyVersion>
+    <FileVersion>2.6.2.21122</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

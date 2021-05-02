@@ -98,7 +98,9 @@ namespace Onova.Services
                 }
 
                 // Try to parse version
-                var versionText = Regex.Match(releaseTitle, "(\\d+\\.\\d+(?:\\.\\d+)?(?:\\.\\d+)?)").Groups[1].Value;
+                var match = Regex.Match(releaseTitle ?? "", "(\\d+\\.\\d+(?:\\.\\d+)?(?:\\.\\d+)?)").Groups[1];
+                var versionText = match?.Value; 
+
                 if (!Version.TryParse(versionText, out var version))
                     continue;
 
@@ -112,10 +114,10 @@ namespace Onova.Services
                 foreach (var assetJson in assetsJson.EnumerateArray())
                 {
                     var assetName = assetJson.GetProperty("name").GetString();
-                    var assetUrl = assetJson.GetProperty("url").GetString();
+                    var assetUrl = assetJson.GetProperty("url").GetString() ?? "";
 
                     // See if name matches
-                    if (!WildcardPattern.IsMatch(assetName, _assetNamePattern))
+                    if (!WildcardPattern.IsMatch(assetName ?? "", _assetNamePattern))
                         continue;
 
                     // Add to dictionary
