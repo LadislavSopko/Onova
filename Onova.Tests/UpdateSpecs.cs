@@ -38,10 +38,16 @@ namespace Onova.Tests
                 Version.Parse("3.0")
             };
 
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
+            };
+
             using var updateManager = new UpdateManager(
                 updatee,
                 new FakePackageResolver(availableVersions),
-                new FakePackageExtractor()
+                new FakePackageExtractor(),
+                cfg
             );
 
             // Act
@@ -57,7 +63,7 @@ namespace Onova.Tests
         public async Task I_can_check_for_updates_and_get_nothing_if_there_is_no_higher_version_available()
         {
             // Arrange
-            var updatee = new AssemblyMetadata("TestUpdatee", Version.Parse("3.0"), "");
+            var updatee = new AssemblyMetadata("TestUpdatee", Version.Parse("3.0.0.0"), "");
 
             // Cleanup storage directory (TODO: move this to API)
             DirectoryEx.DeleteIfExists(
@@ -68,15 +74,21 @@ namespace Onova.Tests
 
             var availableVersions = new[]
             {
-                Version.Parse("1.0"),
-                Version.Parse("2.0"),
-                Version.Parse("3.0")
+                Version.Parse("1.0.0.0"),
+                Version.Parse("2.0.0.0"),
+                Version.Parse("3.0.0.0")
+            };
+
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
             };
 
             using var updateManager = new UpdateManager(
                 updatee,
                 new FakePackageResolver(availableVersions),
-                new FakePackageExtractor()
+                new FakePackageExtractor(),
+                cfg
             );
 
             // Act
@@ -84,8 +96,8 @@ namespace Onova.Tests
 
             // Assert
             result.CanUpdate.Should().BeFalse();
-            result.Versions.Should().BeEquivalentTo(availableVersions);
-            result.LastVersion.Should().Be(updatee.Version);
+            result.Versions.Should().BeEmpty();
+            result.LastVersion.Should().BeNull();
         }
 
         [Fact]
@@ -103,10 +115,16 @@ namespace Onova.Tests
 
             var availableVersions = Array.Empty<Version>();
 
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
+            };
+
             using var updateManager = new UpdateManager(
                 updatee,
                 new FakePackageResolver(availableVersions),
-                new FakePackageExtractor()
+                new FakePackageExtractor(),
+                cfg
             );
 
             // Act
@@ -138,10 +156,16 @@ namespace Onova.Tests
                 Version.Parse("3.0")
             };
 
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
+            };
+
             using var updateManager = new UpdateManager(
                 updatee,
                 new FakePackageResolver(availableVersions),
-                new FakePackageExtractor()
+                new FakePackageExtractor(),
+                cfg
             );
 
             var version = Version.Parse("2.0");
@@ -173,10 +197,16 @@ namespace Onova.Tests
                 Version.Parse("3.0")
             };
 
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
+            };
+
             using var manager = new UpdateManager(
                 updatee,
                 new FakePackageResolver(availableVersions),
-                new FakePackageExtractor()
+                new FakePackageExtractor(),
+                cfg
             );
 
             var expectedPreparedUpdateVersions = new[]
@@ -195,7 +225,7 @@ namespace Onova.Tests
             preparedUpdateVersions.Should().BeEquivalentTo(expectedPreparedUpdateVersions);
         }
 
-        [Fact(Timeout = 10000)]
+        [Fact(Timeout = 1000000)]
         public async Task I_can_install_an_update_after_preparing_it()
         {
             // Arrange

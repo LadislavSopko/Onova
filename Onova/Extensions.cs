@@ -26,17 +26,17 @@ namespace Onova
         {
             // Check
             var result = await manager.CheckForUpdatesAsync(cancellationToken);
-            if (!result.CanUpdate || result.LastVersion == null)
-                return;
+            if (result.CanUpdate && result.LastVersion != null)
+            {
+                // Prepare
+                await manager.PrepareUpdateAsync(result.LastVersion, progress, cancellationToken);
 
-            // Prepare
-            await manager.PrepareUpdateAsync(result.LastVersion, progress, cancellationToken);
+                // Apply
+                manager.LaunchUpdater(result.LastVersion, restart);
 
-            // Apply
-            manager.LaunchUpdater(result.LastVersion, restart);
-
-            // Exit
-            Environment.Exit(0);
+                // Exit
+                Environment.Exit(0);
+            }
         }
     }
 }

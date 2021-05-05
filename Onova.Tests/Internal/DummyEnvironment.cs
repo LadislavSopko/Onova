@@ -105,12 +105,13 @@ namespace Onova.Tests.Internal
 
         public async Task<string> RunDummyAsync(params string[] arguments)
         {
-            var result = await Cli.Wrap("dotnet")
+            var task = Cli.Wrap("dotnet")
                 .WithArguments(a => a
                     .Add(DummyFilePath)
                     .Add(arguments))
                 .ExecuteBufferedAsync();
-
+            var id = task.ProcessId;
+            var result = await task;
             return result.StandardOutput;
         }
 

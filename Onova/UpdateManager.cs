@@ -14,6 +14,9 @@ using Onova.Services;
 
 namespace Onova
 {
+
+    
+
     /// <summary>
     /// Entry point for handling application updates.
     /// </summary>
@@ -34,11 +37,16 @@ namespace Onova
         /// <inheritdoc />
         public AssemblyMetadata Updatee { get; }
 
+        private AutomaticUpdateConfig _config;
+
         /// <summary>
         /// Initializes an instance of <see cref="UpdateManager"/>.
         /// </summary>
-        public UpdateManager(AssemblyMetadata updatee, IPackageResolver resolver, IPackageExtractor extractor)
+        public UpdateManager(AssemblyMetadata updatee, IPackageResolver resolver, IPackageExtractor extractor, AutomaticUpdateConfig cfg)
         {
+
+            _config = cfg ?? new AutomaticUpdateConfig();
+
             Platform.EnsureWindows();
 
             Updatee = updatee;
@@ -62,8 +70,8 @@ namespace Onova
         /// <summary>
         /// Initializes an instance of <see cref="UpdateManager"/> on the entry assembly.
         /// </summary>
-        public UpdateManager(IPackageResolver resolver, IPackageExtractor extractor)
-            : this(AssemblyMetadata.FromEntryAssembly(), resolver, extractor)
+        public UpdateManager(IPackageResolver resolver, IPackageExtractor extractor, AutomaticUpdateConfig cfg)
+            : this(AssemblyMetadata.FromEntryAssembly(), resolver, extractor, cfg)
         {
         }
 
@@ -110,12 +118,24 @@ namespace Onova
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
 
-            // Get versions
-            var versions = await _resolver.GetPackageVersionsAsync(cancellationToken);
-            var lastVersion = versions.Max();
-            var canUpdate = lastVersion != null && Updatee.Version < lastVersion;
+            
+            try
+            {
+                var max_updatable = Version.Parse(_config.MaxUpdatableVersion);
 
-            return new CheckForUpdatesResult(versions, lastVersion, canUpdate);
+                // Get versions
+                var versions = await _resolver.GetPackageVersionsAsync(cancellationToken);
+                var lastVersion = versions.Where(v => v <= max_updatable).Max();
+                var canUpdate = lastVersion != null && Updatee.Version < lastVersion && _config.Active;
+
+                return CheckForUpdatesResult.Ok(versions, lastVersion, canUpdate);
+
+            }
+            catch(Exception ex)
+            {
+                return CheckForUpdatesResult.FromError(ex);
+            }
+           
         }
 
         /// <inheritdoc />

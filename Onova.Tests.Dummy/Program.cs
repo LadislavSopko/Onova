@@ -2,7 +2,9 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
+using Onova.Models;
 using Onova.Services;
 
 namespace Onova.Tests.Dummy
@@ -22,10 +24,20 @@ namespace Onova.Tests.Dummy
 
         private static readonly IUpdateManager UpdateManager = new UpdateManager(
             new LocalPackageResolver(PackagesDirPath, "*.onv"),
-            new ZipPackageExtractor());
+            new ZipPackageExtractor(),
+            new AutomaticUpdateConfig()
+            {
+                Active = true
+            });
 
         public static async Task Main(string[] args)
         {
+            //var i = 0;
+            //while(i == 0)
+            //{
+            //    Thread.Sleep(10);
+            //}
+
             // Dump arguments to file.
             // This is only accurate enough for simple inputs.
             File.WriteAllLines(LastRunFilePath, args);

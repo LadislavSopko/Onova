@@ -3,6 +3,7 @@ using System.Reflection;
 
 namespace Onova.Models
 {
+
     /// <summary>
     /// Contains information about an assembly.
     /// </summary>
