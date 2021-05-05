@@ -14,8 +14,6 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <DebugType>embedded</DebugType>
-    <AssemblyVersion>2.6.3.21122</AssemblyVersion>
-    <FileVersion>2.6.3.21122</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
