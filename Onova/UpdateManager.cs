@@ -118,22 +118,28 @@ namespace Onova
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
 
-            
-            try
+            if (_config.Active)
             {
-                var max_updatable = Version.Parse(_config.MaxUpdatableVersion);
+                try
+                {
+                    var max_updatable = Version.Parse(_config.MaxUpdatableVersion);
 
-                // Get versions
-                var versions = await _resolver.GetPackageVersionsAsync(cancellationToken);
-                var lastVersion = versions.Where(v => v <= max_updatable).Max();
-                var canUpdate = lastVersion != null && Updatee.Version < lastVersion && _config.Active;
+                    // Get versions
+                    var versions = await _resolver.GetPackageVersionsAsync(cancellationToken);
+                    var lastVersion = versions.Where(v => v <= max_updatable).Max();
+                    var canUpdate = lastVersion != null && Updatee.Version < lastVersion;
 
-                return CheckForUpdatesResult.Ok(versions, lastVersion, canUpdate);
+                    return canUpdate ? CheckForUpdatesResult.Ok(versions, lastVersion, canUpdate):
+                        CheckForUpdatesResult.NoUpdate();
 
-            }
-            catch(Exception ex)
+                }
+                catch (Exception ex)
+                {
+                    return CheckForUpdatesResult.FromError(ex);
+                }
+            } else
             {
-                return CheckForUpdatesResult.FromError(ex);
+                return CheckForUpdatesResult.NoUpdate();
             }
            
         }

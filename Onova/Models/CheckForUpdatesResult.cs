@@ -65,6 +65,13 @@ namespace Onova.Models
             };
         }
 
-        
+        /// <summary>
+        /// No update
+        /// </summary>
+        /// <returns></returns>
+        public static CheckForUpdatesResult NoUpdate()
+        {
+            return new CheckForUpdatesResult(new List<Version>(), default, false);
+        }
     }
 }
