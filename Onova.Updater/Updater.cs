@@ -14,7 +14,7 @@ namespace Onova.Updater
         private readonly bool _restartUpdatee;
         private readonly string _routedArgs;
 
-        private readonly TextWriter _log = File.CreateText(
+        public static readonly TextWriter _log = File.CreateText(
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Log.txt")
         );
 
@@ -30,7 +30,7 @@ namespace Onova.Updater
             _routedArgs = routedArgs;
         }
 
-        private void WriteLog(string content)
+        public static void WriteLog(string content)
         {
             var date = DateTimeOffset.Now;
             _log.WriteLine($"{date:dd-MMM-yyyy HH:mm:ss.fff}> {content}");
@@ -62,7 +62,8 @@ namespace Onova.Updater
                 {
                     WorkingDirectory = updateeDirPath,
                     Arguments = _routedArgs,
-                    UseShellExecute = true // avoid sharing console window with updatee
+                    // UseShellExecute = true // avoid sharing console window with updatee
+                    UseShellExecute = false // we need continue on the same console as Updatee (it is console app)
                 };
 
                 // If updatee is an .exe file - start it directly

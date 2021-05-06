@@ -17,6 +17,7 @@ namespace Onova.Updater.Internal
                 // Get destination file path
                 var destFileName = Path.GetFileName(sourceFilePath);
                 var destFilePath = Path.Combine(destDirPath, destFileName);
+                Updater.WriteLog($"Copy: {sourceFilePath} -> {destFilePath} ({overwrite})");
                 File.Copy(sourceFilePath, destFilePath, overwrite);
             }
 
