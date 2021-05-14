@@ -127,7 +127,7 @@ namespace Onova
                     // Get versions
                     var versions = await _resolver.GetPackageVersionsAsync(cancellationToken);
                     var lastVersion = versions.Where(v => v <= max_updatable).Max();
-                    var canUpdate = lastVersion != null && Updatee.Version < lastVersion;
+                    var canUpdate = lastVersion != null; // && Updatee.Version < lastVersion; (show all possible) we need also downgrade
 
                     return canUpdate ? CheckForUpdatesResult.Ok(versions, lastVersion, canUpdate):
                         CheckForUpdatesResult.NoUpdate();
