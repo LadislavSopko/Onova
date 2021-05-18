@@ -95,9 +95,9 @@ namespace Onova.Tests
             var result = await updateManager.CheckForUpdatesAsync();
 
             // Assert
-            result.CanUpdate.Should().BeFalse();
-            result.Versions.Should().BeEmpty();
-            result.LastVersion.Should().BeNull();
+            result.CanUpdate.Should().BeTrue();
+            result.Versions.Should().NotBeEmpty();
+            result.LastVersion.Should().NotBeNull();
         }
 
         [Fact]
