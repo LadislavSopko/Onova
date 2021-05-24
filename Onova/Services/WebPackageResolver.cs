@@ -49,8 +49,10 @@ namespace Onova.Services
         {
             var map = new Dictionary<Version, string>();
 
+            
             // Get manifest
             var response = await _httpClient.GetStringAsync(_manifestUrl, cancellationToken);
+            
 
             foreach (var line in response.Split("\n"))
             {
@@ -72,6 +74,8 @@ namespace Onova.Services
                 // Add to dictionary
                 map[version] = url;
             }
+
+            
 
             return map;
         }
