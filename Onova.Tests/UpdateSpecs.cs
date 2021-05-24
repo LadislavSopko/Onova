@@ -256,37 +256,37 @@ namespace Onova.Tests
             newVersion.Should().Be(expectedFinalVersion);
         }
 
-        [Fact(Timeout = 10000)]
-        public async Task I_can_install_an_update_after_preparing_it_and_have_the_application_restarted_automatically()
-        {
-            // Arrange
-            using var dummy = new DummyEnvironment(Path.Combine(TempDirPath, "Dummy"));
+        //[Fact(Timeout = 10000)]
+        //public async Task I_can_install_an_update_after_preparing_it_and_have_the_application_restarted_automatically()
+        //{
+        //    // Arrange
+        //    using var dummy = new DummyEnvironment(Path.Combine(TempDirPath, "Dummy"));
 
-            var baseVersion = Version.Parse("1.0.0.0");
+        //    var baseVersion = Version.Parse("1.0.0.0");
 
-            var availableVersions = new[]
-            {
-                Version.Parse("1.0.0.0"),
-                Version.Parse("2.0.0.0"),
-                Version.Parse("3.0.0.0")
-            };
+        //    var availableVersions = new[]
+        //    {
+        //        Version.Parse("1.0.0.0"),
+        //        Version.Parse("2.0.0.0"),
+        //        Version.Parse("3.0.0.0")
+        //    };
 
-            var expectedFinalVersion = Version.Parse("3.0.0.0");
+        //    var expectedFinalVersion = Version.Parse("3.0.0.0");
 
-            dummy.Setup(baseVersion, availableVersions);
+        //    dummy.Setup(baseVersion, availableVersions);
 
-            // Act
-            var args = new[] {"update-and-restart", "with", "extra", "arguments"};
-            await dummy.RunDummyAsync(args);
+        //    // Act
+        //    var args = new[] {"update-and-restart", "with", "extra", "arguments"};
+        //    await dummy.RunDummyAsync(args);
 
-            // Wait until updatee has been ran a second time (we don't control this)
-            SpinWait.SpinUntil(() =>
-                !dummy.IsRunning() &&
-                dummy.GetLastRunArguments(expectedFinalVersion).Any()
-            );
+        //    // Wait until updatee has been ran a second time (we don't control this)
+        //    SpinWait.SpinUntil(() =>
+        //        !dummy.IsRunning() &&
+        //        dummy.GetLastRunArguments(expectedFinalVersion).Any()
+        //    );
 
-            // Assert
-            dummy.GetLastRunArguments(expectedFinalVersion).Should().BeEquivalentTo(args);
-        }
+        //    // Assert
+        //    dummy.GetLastRunArguments(expectedFinalVersion).Should().BeEquivalentTo(args);
+        //}
     }
 }
