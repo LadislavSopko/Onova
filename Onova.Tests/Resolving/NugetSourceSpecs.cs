@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Threading.Tasks;
@@ -52,11 +53,11 @@ namespace Onova.Tests.Resolving
             var versions = await resolver.GetPackageVersionsAsync();
 
             // Assert
-            versions.Should().BeEquivalentTo(
+            versions.Should().BeEquivalentTo(new List<Version>() {
                 Version.Parse("1.0.0"),
                 Version.Parse("2.0.0"),
                 Version.Parse("3.0.0")
-            );
+            });
         }
     }
 }
