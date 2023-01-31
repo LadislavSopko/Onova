@@ -11,6 +11,7 @@ using Onova.Internal.Extensions;
 
 namespace Onova.Services
 {
+
     /// <summary>
     /// Resolves packages using a manifest served by a web server.
     /// Manifest consists of package versions and URLs, separated by space, one line per version.
@@ -45,9 +46,9 @@ namespace Onova.Services
             return uri.ToString();
         }
 
-        private async Task<IReadOnlyDictionary<Version, string>> GetPackageVersionUrlMapAsync(CancellationToken cancellationToken)
+        private async Task<IReadOnlyDictionary<Version, VersionWithInfo>> GetPackageVersionUrlMapAsync(CancellationToken cancellationToken)
         {
-            var map = new Dictionary<Version, string>();
+            var map = new Dictionary<Version, VersionWithInfo>();
 
             
             // Get manifest
@@ -58,7 +59,23 @@ namespace Onova.Services
             {
                 // Get package version and URL
                 var versionText = line.SubstringUntil(" ").Trim();
+
+                // 31/01/2023 laco #567 added posibility to have small release version note
+                // it can be added in end of version line   <version url {Note....}>\n ....
                 var url = line.SubstringAfter(" ").Trim();
+                string note = "";
+
+                var parts = url.Split("{");
+                if(parts.Count() > 1)
+                {
+                    // we have NOTE
+                    url = parts[0].Trim();
+                    note = parts[1].Trim('{', '}', ' ');
+                } else
+                {
+                    url = parts[0].Trim();
+                }
+
 
                 // If either is not set - skip
                 if (string.IsNullOrWhiteSpace(versionText) || string.IsNullOrWhiteSpace(url))
@@ -72,7 +89,7 @@ namespace Onova.Services
                 url = ExpandRelativeUrl(url);
 
                 // Add to dictionary
-                map[version] = url;
+                map[version] = new VersionWithInfo(version, url, note);
             }
 
             
@@ -81,10 +98,10 @@ namespace Onova.Services
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<Version>> GetPackageVersionsAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<VersionWithInfo>> GetPackageVersionsAsync(CancellationToken cancellationToken = default)
         {
             var versions = await GetPackageVersionUrlMapAsync(cancellationToken);
-            return versions.Keys.ToArray();
+            return versions.Values.ToArray();
         }
 
         /// <inheritdoc />
@@ -95,12 +112,12 @@ namespace Onova.Services
             var map = await GetPackageVersionUrlMapAsync(cancellationToken);
 
             // Try to get package URL
-            var packageUrl = map.GetValueOrDefault(version);
-            if (string.IsNullOrWhiteSpace(packageUrl))
+            var packageInfo = map.GetValueOrDefault(version);
+            if (string.IsNullOrWhiteSpace(packageInfo.Data))
                 throw new PackageNotFoundException(version);
 
             // Download
-            using var response = await _httpClient.GetAsync(packageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await _httpClient.GetAsync(packageInfo.Data, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             using var output = File.Create(destFilePath);

@@ -161,10 +161,10 @@ namespace Onova.Services
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<Version>> GetPackageVersionsAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<VersionWithInfo>> GetPackageVersionsAsync(CancellationToken cancellationToken = default)
         {
             var versions = await GetPackageVersionUrlMapAsync(cancellationToken);
-            return versions.Keys.ToArray();
+            return versions.Keys.Select(v => new VersionWithInfo(v, "", "")).ToArray();
         }
 
         /// <inheritdoc />

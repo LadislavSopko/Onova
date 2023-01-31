@@ -1,8 +1,39 @@
-﻿using System;
+﻿using Onova.Services;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Onova.Models
 {
+    /// <summary>
+    /// Extends base with note
+    /// </summary>
+    public class CheckForUpdatesResultWithNote : CheckForUpdatesResult
+    {
+        internal CheckForUpdatesResultWithNote(IReadOnlyList<VersionWithInfo> versns, Version? lastVersion, bool canUpdate) : base(versns.Select(v => v.Version).ToArray(), lastVersion, canUpdate)
+        {
+            VersionsWithInfo = versns;
+        }
+
+        /// <summary>
+        /// All available package versions.
+        /// </summary>
+        public IReadOnlyList<VersionWithInfo> VersionsWithInfo { get; protected set; }
+
+
+        /// <summary>
+        /// Generate Result from available update
+        /// </summary>
+        /// <param name="versions"></param>
+        /// <param name="lastVersion"></param>
+        /// <param name="doUpdate"></param>
+        /// <returns></returns>
+        public static CheckForUpdatesResult OkWithNote(IReadOnlyList<VersionWithInfo> versions, Version? lastVersion, bool doUpdate)
+        {
+            return new CheckForUpdatesResultWithNote(versions, lastVersion, doUpdate);
+        }
+    }
+
     /// <summary>
     /// Result of checking for updates.
     /// </summary>
