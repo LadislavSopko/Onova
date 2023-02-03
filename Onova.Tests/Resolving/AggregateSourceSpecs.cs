@@ -86,13 +86,14 @@ namespace Onova.Tests.Resolving
                 Version.Parse("3.0")
             };
 
+
             var resolver = CreateAggregatePackageResolver(availableVersions);
 
             // Act
             var versions = await resolver.GetPackageVersionsAsync();
 
             // Assert
-            versions.Should().BeEquivalentTo(availableVersions);
+            versions.Select(v => v.Version).Should().BeEquivalentTo(availableVersions);
         }
     }
 }

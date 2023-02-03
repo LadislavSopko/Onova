@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Onova.Services;
@@ -48,7 +49,7 @@ namespace Onova.Tests.Resolving
             var versions = await resolver.GetPackageVersionsAsync();
 
             // Assert
-            versions.Should().BeEquivalentTo(new List<Version>() {
+            versions.Select(v => v.Version).Should().BeEquivalentTo(new List<Version>() {
                 Version.Parse("1.0"),
                 Version.Parse("2.0"),
                 Version.Parse("3.0")

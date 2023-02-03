@@ -11,14 +11,14 @@ namespace Onova.Tests
     {
         private class FakePackageResolver : IPackageResolver
         {
-            private readonly IReadOnlyList<Version> _versions;
+            private readonly IReadOnlyList<VersionWithInfo> _versions;
 
-            public FakePackageResolver(IReadOnlyList<Version> versions)
+            public FakePackageResolver(IReadOnlyList<VersionWithInfo> versions)
             {
                 _versions = versions;
             }
 
-            public Task<IReadOnlyList<Version>> GetPackageVersionsAsync(CancellationToken cancellationToken = default) =>
+            public Task<IReadOnlyList<VersionWithInfo>> GetPackageVersionsAsync(CancellationToken cancellationToken = default) =>
                 Task.FromResult(_versions);
 
             public Task DownloadPackageAsync(Version version, string destFilePath,

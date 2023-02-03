@@ -75,7 +75,7 @@ namespace Onova.Tests.Resolving
             var versions = await resolver.GetPackageVersionsAsync();
 
             // Assert
-            versions.Should().BeEquivalentTo(availableVersions);
+            versions.Select(v => v.Version).Should().BeEquivalentTo(availableVersions);
         }
     }
 }

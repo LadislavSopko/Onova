@@ -126,10 +126,10 @@ namespace Onova
 
                     // Get versions
                     var versions = await _resolver.GetPackageVersionsAsync(cancellationToken);
-                    var lastVersion = versions.Where(v => v <= max_updatable).Max();
+                    var lastVersion = versions.Where(v => v.Version <= max_updatable).Select(v => v.Version).Max();
                     var canUpdate = lastVersion != null; // && Updatee.Version < lastVersion; (show all possible) we need also downgrade
 
-                    return canUpdate ? CheckForUpdatesResult.Ok(versions, lastVersion, canUpdate):
+                    return canUpdate ? CheckForUpdatesResultWithNote.OkWithNote(versions, lastVersion, canUpdate):
                         CheckForUpdatesResult.NoUpdate();
 
                 }

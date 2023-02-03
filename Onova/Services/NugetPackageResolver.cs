@@ -61,7 +61,7 @@ namespace Onova.Services
         }
 
         /// <inheritdoc />
-        public async Task<IReadOnlyList<Version>> GetPackageVersionsAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<VersionWithInfo>> GetPackageVersionsAsync(CancellationToken cancellationToken = default)
         {
             // Get package base address resource URL
             var resourceUrl = await GetPackageBaseAddressResourceUrlAsync(cancellationToken);
@@ -71,16 +71,22 @@ namespace Onova.Services
             var responseJson = await _httpClient.GetJsonAsync(request, cancellationToken);
             var versionsJson = responseJson.GetProperty("versions");
             var versions = new HashSet<Version>();
+            List<VersionWithInfo> _ret = new List<VersionWithInfo>();
 
             foreach (var versionJson in versionsJson.EnumerateArray())
             {
                 var versionText = versionJson.GetString();
 
                 if (Version.TryParse(versionText, out var version))
-                    versions.Add(version);
+                {
+                    if (versions.Add(version))
+                    {
+                        _ret.Add(new VersionWithInfo(version, "", ""));
+                    }
+                }
             }
 
-            return versions.ToArray();
+            return _ret.ToArray();
         }
 
         /// <inheritdoc />

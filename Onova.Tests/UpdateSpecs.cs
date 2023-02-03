@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Onova.Models;
+using Onova.Services;
 using Onova.Tests.Internal;
 using Xunit;
 
@@ -31,11 +32,11 @@ namespace Onova.Tests
                     "Onova", updatee.Name)
             );
 
-            var availableVersions = new[]
+            VersionWithInfo[] availableVersions = new[]
             {
-                Version.Parse("1.0"),
-                Version.Parse("2.0"),
-                Version.Parse("3.0")
+                new VersionWithInfo(Version.Parse("1.0"), "url1", "note 1"),
+                new VersionWithInfo(Version.Parse("2.0"), "url2", "note 2"),
+                new VersionWithInfo(Version.Parse("3.0"), "url3", "note 2")
             };
 
             var cfg = new AutomaticUpdateConfig()
@@ -55,7 +56,7 @@ namespace Onova.Tests
 
             // Assert
             result.CanUpdate.Should().BeTrue();
-            result.Versions.Should().BeEquivalentTo(availableVersions);
+            result.Versions.Should().BeEquivalentTo(availableVersions.Select(v => v.Version));
             result.LastVersion.Should().Be(Version.Parse("3.0"));
         }
 
@@ -72,11 +73,12 @@ namespace Onova.Tests
                     "Onova", updatee.Name)
             );
 
-            var availableVersions = new[]
+          
+            VersionWithInfo[] availableVersions = new[]
             {
-                Version.Parse("1.0.0.0"),
-                Version.Parse("2.0.0.0"),
-                Version.Parse("3.0.0.0")
+                new VersionWithInfo(Version.Parse("1.0.0.0"), "url1", "note 1"),
+                new VersionWithInfo(Version.Parse("2.0.0.0"), "url2", "note 2"),
+                new VersionWithInfo(Version.Parse("3.0.0.0"), "url3", "note 2")
             };
 
             var cfg = new AutomaticUpdateConfig()
@@ -113,7 +115,7 @@ namespace Onova.Tests
                     "Onova", updatee.Name)
             );
 
-            var availableVersions = Array.Empty<Version>();
+            var availableVersions = Array.Empty<VersionWithInfo>();
 
             var cfg = new AutomaticUpdateConfig()
             {
@@ -149,11 +151,12 @@ namespace Onova.Tests
                     "Onova", updatee.Name)
             );
 
-            var availableVersions = new[]
+            
+            VersionWithInfo[] availableVersions = new[]
             {
-                Version.Parse("1.0"),
-                Version.Parse("2.0"),
-                Version.Parse("3.0")
+                new VersionWithInfo(Version.Parse("1.0"), "url1", "note 1"),
+                new VersionWithInfo(Version.Parse("2.0"), "url2", "note 2"),
+                new VersionWithInfo(Version.Parse("3.0"), "url3", "note 2")
             };
 
             var cfg = new AutomaticUpdateConfig()
@@ -190,11 +193,11 @@ namespace Onova.Tests
                     "Onova", updatee.Name)
             );
 
-            var availableVersions = new[]
-            {
-                Version.Parse("1.0"),
-                Version.Parse("2.0"),
-                Version.Parse("3.0")
+            VersionWithInfo[] availableVersions = new[]
+           {
+                new VersionWithInfo(Version.Parse("1.0"), "url1", "note 1"),
+                new VersionWithInfo(Version.Parse("2.0"), "url2", "note 2"),
+                new VersionWithInfo(Version.Parse("3.0"), "url3", "note 2")
             };
 
             var cfg = new AutomaticUpdateConfig()
