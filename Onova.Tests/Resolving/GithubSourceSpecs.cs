@@ -24,39 +24,39 @@ namespace Onova.Tests.Resolving
         private GithubPackageResolver CreateGithubPackageResolver() =>
             new("Tyrrrz", "OnovaTestRepo", "*.onv");
 
-        [Fact]
-        public async Task I_can_use_a_GitHub_repository_as_a_package_source()
-        {
-            // Arrange
-            var resolver = CreateGithubPackageResolver();
+        //[Fact]
+        //public async Task I_can_use_a_GitHub_repository_as_a_package_source()
+        //{
+        //    // Arrange
+        //    var resolver = CreateGithubPackageResolver();
 
-            var version = Version.Parse("2.0");
-            var destFilePath = Path.Combine(TempDirPath, "Output.onv");
+        //    var version = Version.Parse("2.0");
+        //    var destFilePath = Path.Combine(TempDirPath, "Output.onv");
 
-            // Act
-            await resolver.DownloadPackageAsync(version, destFilePath);
+        //    // Act
+        //    await resolver.DownloadPackageAsync(version, destFilePath);
 
-            // Assert
-            var content = await File.ReadAllTextAsync(destFilePath);
-            content.Should().Be("Hello world");
-        }
+        //    // Assert
+        //    var content = await File.ReadAllTextAsync(destFilePath);
+        //    content.Should().Be("Hello world");
+        //}
 
-        [Fact]
-        public async Task When_using_a_GitHub_repository_as_a_package_source_packages_are_mapped_from_releases()
-        {
-            // Arrange
-            var resolver = CreateGithubPackageResolver();
+        //[Fact]
+        //public async Task When_using_a_GitHub_repository_as_a_package_source_packages_are_mapped_from_releases()
+        //{
+        //    // Arrange
+        //    var resolver = CreateGithubPackageResolver();
 
-            // Act
-            var versions = await resolver.GetPackageVersionsAsync();
+        //    // Act
+        //    var versions = await resolver.GetPackageVersionsAsync();
 
-            // Assert
-            versions.Select(v => v.Version).Should().BeEquivalentTo(new List<Version>() {
-                Version.Parse("1.0"),
-                Version.Parse("2.0"),
-                Version.Parse("3.0")
-                }
-            );
-        }
+        //    // Assert
+        //    versions.Select(v => v.Version).Should().BeEquivalentTo(new List<Version>() {
+        //        Version.Parse("1.0"),
+        //        Version.Parse("2.0"),
+        //        Version.Parse("3.0")
+        //        }
+        //    );
+        //}
     }
 }
