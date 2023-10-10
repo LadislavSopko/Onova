@@ -100,6 +100,27 @@ namespace Onova.Updater
             // Delete package content directory
             WriteLog("Deleting package contents from storage...");
             Directory.Delete(_packageContentDirPath, true);
+
+            // run post update commands
+
+            //var _ThisProcess = Process.GetCurrentProcess(); // Or whatever method you are using
+            //var _processPath = _ThisProcess.MainModule?.FileName;
+            //var fileName = Path.GetFileName(_processPath);
+
+            var newPath = updateeDirPath; // Path.GetDirectoryName(fileName);
+
+            Process process = new Process();
+
+            var fileName = Path.Combine(newPath, "postUpdate.bat");
+            if (File.Exists(fileName)) {
+
+                process.StartInfo.WorkingDirectory = newPath;
+                process.StartInfo.FileName = fileName;
+                process.Start();
+                process.WaitForExit();
+                process.Close();
+
+            }
         }
 
         public void Run()
