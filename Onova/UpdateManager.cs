@@ -113,7 +113,7 @@ namespace Onova
         }
 
         /// <inheritdoc />
-        public async Task<CheckForUpdatesResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
+        public async Task<CheckForUpdatesResult> CheckForUpdatesAsync(Func<VersionWithInfo, bool>? filter = null, CancellationToken cancellationToken = default)
         {
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
@@ -122,10 +122,12 @@ namespace Onova
             {
                 try
                 {
+                    var flt = filter != null ? filter : (e) => true;
+
                     var max_updatable = Version.Parse(_config.MaxUpdatableVersion);
 
                     // Get versions
-                    var versions = await _resolver.GetPackageVersionsAsync(cancellationToken);
+                    var versions = (await _resolver.GetPackageVersionsAsync(cancellationToken)).Where(flt).ToList();
                     var lastVersion = versions.Where(v => v.Version <= max_updatable).Select(v => v.Version).Max();
                     var canUpdate = lastVersion != null; // && Updatee.Version < lastVersion; (show all possible) we need also downgrade
 
@@ -295,5 +297,7 @@ namespace Onova
                 _lockFile?.Dispose();
             }
         }
+
+        
     }
 }

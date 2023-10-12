@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Onova.Models;
+using Onova.Services;
 
 namespace Onova
 {
@@ -19,7 +20,7 @@ namespace Onova
         /// <summary>
         /// Checks for updates.
         /// </summary>
-        Task<CheckForUpdatesResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default);
+        Task<CheckForUpdatesResult> CheckForUpdatesAsync(Func<VersionWithInfo, bool>? filter = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Checks whether an update to given version has been prepared.

@@ -25,7 +25,7 @@ namespace Onova
             IProgress<double>? progress = null, CancellationToken cancellationToken = default)
         {
             // Check
-            var result = await manager.CheckForUpdatesAsync(cancellationToken);
+            var result = await manager.CheckForUpdatesAsync(null, cancellationToken);
             if (result.CanUpdate && result.LastVersion != null)
             {
                 // Prepare
