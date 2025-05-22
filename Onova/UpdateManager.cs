@@ -26,6 +26,7 @@ namespace Onova
 
         private readonly IPackageResolver _resolver;
         private readonly IPackageExtractor _extractor;
+        private readonly IBackupper _backupper;
 
         private readonly string _storageDirPath;
         private readonly string _updaterFilePath;
@@ -42,7 +43,7 @@ namespace Onova
         /// <summary>
         /// Initializes an instance of <see cref="UpdateManager"/>.
         /// </summary>
-        public UpdateManager(AssemblyMetadata updatee, IPackageResolver resolver, IPackageExtractor extractor, AutomaticUpdateConfig cfg)
+        public UpdateManager(AssemblyMetadata updatee, IPackageResolver resolver, IPackageExtractor extractor, IBackupper backupper, AutomaticUpdateConfig cfg)
         {
 
             _config = cfg ?? new AutomaticUpdateConfig();
@@ -52,6 +53,7 @@ namespace Onova
             Updatee = updatee;
             _resolver = resolver;
             _extractor = extractor;
+            _backupper = backupper;
 
             // Set storage directory path
             _storageDirPath = Path.Combine(
@@ -70,8 +72,8 @@ namespace Onova
         /// <summary>
         /// Initializes an instance of <see cref="UpdateManager"/> on the entry assembly.
         /// </summary>
-        public UpdateManager(IPackageResolver resolver, IPackageExtractor extractor, AutomaticUpdateConfig cfg)
-            : this(AssemblyMetadata.FromEntryAssembly(), resolver, extractor, cfg)
+        public UpdateManager(IPackageResolver resolver, IPackageExtractor extractor, IBackupper backupper, AutomaticUpdateConfig cfg)
+            : this(AssemblyMetadata.FromEntryAssembly(), resolver, extractor, backupper, cfg)
         {
         }
 
@@ -157,10 +159,8 @@ namespace Onova
             var packageContentDirPath = GetPackageContentDirPath(version);
 
             // Package content directory should exist
-            // Package file should have been deleted after extraction
             // Updater file should exist
-            return !File.Exists(packageFilePath) &&
-                   Directory.Exists(packageContentDirPath) &&
+            return Directory.Exists(packageContentDirPath) &&
                    File.Exists(_updaterFilePath);
         }
 
@@ -207,10 +207,12 @@ namespace Onova
             EnsureLockFileAcquired();
             EnsureUpdaterNotLaunched();
 
+            var progressZip = progress;
+
             // Set up progress mixer
-            var progressMixer = progress != null
-                ? new ProgressMixer(progress)
-                : null;
+            //var progressMixer = progress != null
+            //    ? new ProgressMixer(progress)
+            //    : null;
 
             // Get package file path and content directory path
             var packageFilePath = GetPackageFilePath(version);
@@ -219,20 +221,70 @@ namespace Onova
             // Ensure storage directory exists
             Directory.CreateDirectory(_storageDirPath);
 
-            // Download package
-            await _resolver.DownloadPackageAsync(version, packageFilePath,
-                progressMixer?.Split(0.9), // 0% -> 90%
-                cancellationToken
-            );
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                // This runs for Ctrl+C, SIGTERM, window close (X), etc.
+                ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
+            };
 
-            // Ensure package content directory exists and is empty
-            DirectoryEx.Reset(packageContentDirPath);
+            using var multiProgress = new MultiLineProgressBar();
 
-            // Extract package contents
-            await _extractor.ExtractPackageAsync(packageFilePath, packageContentDirPath,
-                progressMixer?.Split(0.1), // 90% -> 100%
-                cancellationToken
-            );
+            var binProgress = multiProgress.CreateProgressBar("Bin Backup", "Compressing bin folder...");
+            var dataProgress = multiProgress.CreateProgressBar("Data Backup", "Compressing data folder...");
+            var downloadProgress = multiProgress.CreateProgressBar("Download", "Downloading package...");
+            var extractingProgress = multiProgress.CreateProgressBar("Extracting", "Extracting package...");
+
+            var backupBinTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await _backupper.CreateZipWithProgress("bin", binProgress, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\nBackup bin failed: {ex.Message}");
+                }
+            });
+
+            var backupDataTask = Task.Run(async () =>
+            {
+                try
+                {
+                    if (ZipPackageBackupper.StopServiceWithSC("MongoDBFenix"))
+                    {
+                        await _backupper.CreateZipWithProgress("data", dataProgress, cancellationToken);
+                    }
+                    ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\nBackup data failed: {ex.Message}");
+                }
+            });
+
+            var downloadTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await _resolver.DownloadPackageAsync(version, packageFilePath, downloadProgress, cancellationToken);
+
+                    // Ensure package content directory exists and is empty
+                    DirectoryEx.Reset(packageContentDirPath);
+
+                    // Extract package contents
+                    await _extractor.ExtractPackageAsync(packageFilePath, packageContentDirPath,
+                        extractingProgress, // 90% -> 100%
+                        cancellationToken
+                    );
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\nDownload failed: {ex.Message}");
+                    throw;
+                }
+            });
+
+            await Task.WhenAll(backupBinTask, backupDataTask, downloadTask);
 
             // Delete package
             File.Delete(packageFilePath);
