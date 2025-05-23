@@ -165,7 +165,8 @@ namespace Onova
 
             // Package content directory should exist
             // Updater file should exist
-            return Directory.Exists(packageContentDirPath) &&
+            return !File.Exists(packageFilePath) &&
+                   Directory.Exists(packageContentDirPath) &&
                    File.Exists(_updaterFilePath);
         }
 
@@ -236,8 +237,8 @@ namespace Onova
             string dataZipPath = Path.Combine(_basePath, autoBackupFolderName, SanitizeFileName($"data_{DateTime.Now:G}.zip"));
 
             // Create backup-specific progress bars if needed
-            IProgress<double> binProgress = null;
-            IProgress<double> dataProgress = null;
+            IProgress<double>? binProgress = null;
+            IProgress<double>? dataProgress = null;
 
             if (doBackup)
             {
@@ -270,7 +271,7 @@ namespace Onova
                         {
                             try
                             {
-                                File.Delete(binZipPath); 
+                                File.Delete(binZipPath);
                             }
                             catch { /* Ignore cleanup errors */ }
                         }
@@ -292,10 +293,10 @@ namespace Onova
                         Console.WriteLine($"\nBackup data failed: {ex.Message}");
                         if (File.Exists(dataZipPath))
                         {
-                            try 
+                            try
                             {
                                 File.Delete(dataZipPath);
-                            } 
+                            }
                             catch { /* Ignore cleanup errors */ }
                         }
                     }
