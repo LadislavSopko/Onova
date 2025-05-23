@@ -12,6 +12,6 @@ namespace Onova.Services
         /// <summary>
         /// Compress contents of the given directory to the given output package.
         /// </summary>
-        Task CreateZipWithProgress(string folderName, IProgress<double> progress, CancellationToken cancellationToken = default);
+        Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default);
     }
 }
