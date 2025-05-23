@@ -16,8 +16,6 @@ namespace Onova.Services
     /// </summary>
     public class ZipPackageBackupper : IBackupper
     {
-        public static readonly string BasePath = "C:\\3U\\OGSM";
-
         /// <inheritdoc/>
 
         public async Task CreateZipWithProgress(string sourceDirPath, string destFilePath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
@@ -74,15 +72,11 @@ namespace Onova.Services
             }
         }
 
-        private static string SanitizeFileName(string input)
-        {
-            // Replace invalid filename characters with underscore
-            string invalidChars = new string(Path.GetInvalidFileNameChars());
-            string invalidRegex = $"[{Regex.Escape(invalidChars)}]";
-            return Regex.Replace(input, invalidRegex, "_");
-        }
-
-
+        /// <summary>
+        /// Start mongo service
+        /// </summary>
+        /// <param name="serviceName"></param>
+        /// <returns></returns>
         public static bool StartServiceWithSC(string serviceName)
         {
             try
@@ -103,6 +97,11 @@ namespace Onova.Services
             }
         }
 
+        /// <summary>
+        /// Stop mongo service
+        /// </summary>
+        /// <param name="serviceName"></param>
+        /// <returns></returns>
         public static bool StopServiceWithSC(string serviceName)
         {
             try
