@@ -36,7 +36,7 @@ namespace Onova
         /// Prepares an update to specified version.
         /// </summary>
         Task PrepareUpdateAsync(Version version,
-            IMultiProgressBar progress = null, bool doBackup = true, CancellationToken cancellationToken = default);
+            IMultiProgressBar progress = null, bool doBackup = true, bool doDownload = true, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Launches an external executable that will apply an update to given version, once this application exits.

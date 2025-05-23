@@ -206,7 +206,7 @@ namespace Onova
 
         /// <inheritdoc />
         public async Task PrepareUpdateAsync(Version version,
-            IMultiProgressBar multiProgress = null, bool doBackup = true, CancellationToken cancellationToken = default)
+            IMultiProgressBar multiProgress = null, bool doBackup = true, bool doDownload = true, CancellationToken cancellationToken = default)
         {
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
@@ -227,6 +227,8 @@ namespace Onova
             };
 
             string autoBackupFolderName = "Versions Backups";
+            //Create BK_Version folder
+            //Get current folder, verify that start with BasePath, if yes make backup of fenix core (or current folder)
 
             if (!Directory.Exists(Path.Combine(_basePath, autoBackupFolderName)))
             {
@@ -246,9 +248,15 @@ namespace Onova
                 dataProgress = multiProgress.CreateProgressBar("Data Backup", "Compressing data folder...");
             }
 
-            // Create common progress bars
-            var downloadProgress = multiProgress.CreateProgressBar("Download", "Downloading package...");
-            var extractingProgress = multiProgress.CreateProgressBar("Extracting", "Extracting package...");
+            // Create download-specific progress bars if needed
+            IProgress<double>? downloadProgress = null;
+            IProgress<double>? extractingProgress = null;
+
+            if (doDownload)
+            {
+                downloadProgress = multiProgress.CreateProgressBar("Download", "Downloading package...");
+                extractingProgress = multiProgress.CreateProgressBar("Extracting", "Extracting package...");
+            }
 
             multiProgress.CreateGlobalProgressBar();
 
@@ -306,34 +314,41 @@ namespace Onova
                 tasks.Add(backupDataTask);
             }
 
-            // Add download task (always needed)
-            var downloadTask = Task.Run(async () =>
+            if (doDownload)
             {
-                try
+                var downloadTask = Task.Run(async () =>
                 {
-                    await _resolver.DownloadPackageAsync(version, packageFilePath, downloadProgress, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"\nDownload failed: {ex.Message}");
-                    throw;
-                }
-            });
+                    try
+                    {
+                        await _resolver.DownloadPackageAsync(version, packageFilePath, downloadProgress, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"\nDownload failed: {ex.Message}");
+                        throw;
+                    }
+                });
 
-            tasks.Add(downloadTask);
+                tasks.Add(downloadTask);
+            }
 
             // Wait for all tasks to complete
             await Task.WhenAll(tasks);
 
-            // Extract package contents (common operation)
-            DirectoryEx.Reset(packageContentDirPath);
-            await _extractor.ExtractPackageAsync(packageFilePath, packageContentDirPath, extractingProgress, cancellationToken);
+            if (doDownload)
+            {
+                DirectoryEx.Reset(packageContentDirPath);
+                await _extractor.ExtractPackageAsync(packageFilePath, packageContentDirPath, extractingProgress, cancellationToken);
 
-            // Delete package
-            File.Delete(packageFilePath);
+                // Delete package file
+                if (File.Exists(packageFilePath))
+                {
+                    File.Delete(packageFilePath);
+                }
 
-            // Extract updater
-            await Assembly.GetExecutingAssembly().ExtractManifestResourceAsync(UpdaterResourceName, _updaterFilePath);
+                // Extract updater
+                await Assembly.GetExecutingAssembly().ExtractManifestResourceAsync(UpdaterResourceName, _updaterFilePath);
+            }
         }
 
         /// <inheritdoc />
