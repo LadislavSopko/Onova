@@ -226,14 +226,9 @@ namespace Onova
                 ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
             };
 
-            string autoBackupFolderName = "Versions Backups";
-            //Create BK_Version folder
-            //Get current folder, verify that start with BasePath, if yes make backup of fenix core (or current folder)
+            string autoBackupFolderName = $"Versions Backups\\bk_{SanitizeFileName(version.ToString())}";
 
-            if (!Directory.Exists(Path.Combine(_basePath, autoBackupFolderName)))
-            {
-                Directory.CreateDirectory(Path.Combine(_basePath, autoBackupFolderName));
-            }
+            Directory.CreateDirectory(Path.Combine(_basePath, autoBackupFolderName));
 
             string binZipPath = Path.Combine(_basePath, autoBackupFolderName, SanitizeFileName($"bin_{DateTime.Now:G}.zip"));
             string dataZipPath = Path.Combine(_basePath, autoBackupFolderName, SanitizeFileName($"data_{DateTime.Now:G}.zip"));
@@ -270,7 +265,7 @@ namespace Onova
                 {
                     try
                     {
-                        await _backupper.CreateZipWithProgress(Path.Combine(_basePath, "bin"), binZipPath, binProgress, cancellationToken);
+                        await _backupper.CreateZipWithProgress(AppDomain.CurrentDomain.BaseDirectory, binZipPath, binProgress, cancellationToken);
                     }
                     catch (Exception ex)
                     {
