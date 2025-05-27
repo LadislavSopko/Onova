@@ -11,6 +11,20 @@ using Xunit;
 
 namespace Onova.Tests
 {
+    class Backuper : IBackupper
+    {
+        public Task BackupAsync(string packageName, string version, string targetPath, CancellationToken cancellationToken)
+        {
+            // Do nothing
+            return Task.CompletedTask;
+        }
+
+        public Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     public partial class UpdateSpecs : IDisposable
     {
         private string TempDirPath { get; } = Path.Combine(Directory.GetCurrentDirectory(), $"{nameof(UpdateSpecs)}_{Guid.NewGuid()}");
@@ -48,6 +62,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -90,6 +105,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -126,6 +142,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -168,6 +185,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -209,6 +227,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
