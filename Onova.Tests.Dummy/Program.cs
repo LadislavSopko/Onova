@@ -84,7 +84,7 @@ namespace Onova.Tests.Dummy
                 var restart = command == "update-and-restart";
                 var progressHandler = new ProgreesFake();
 
-                await UpdateManager.CheckPerformUpdateAsync(restart, progressHandler);
+                await UpdateManager.CheckPerformUpdateAsync("c:\\3U\\OGSM", "c:\\3U\\OGSM\\data", restart, progressHandler);
             }
         }
     }
