@@ -37,8 +37,6 @@ namespace Onova
         private LockFile? _lockFile;
         private bool _isDisposed;
 
-        private readonly string _basePath = "C:\\3U\\OGSM";
-
         /// <inheritdoc />
         public AssemblyMetadata Updatee { get; }
 
@@ -205,9 +203,26 @@ namespace Onova
         }
 
         /// <inheritdoc />
-        public async Task PrepareUpdateAsync(Version version,
+        public async Task PrepareUpdateAsync(Version version, Version? backupVersion = null, string basePath = "", string persistorPath = "",
             IMultiProgressBar multiProgress = null, bool doBackup = true, bool doDownload = true, CancellationToken cancellationToken = default)
         {
+
+            if (string.IsNullOrEmpty(basePath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("basePath is empty in config, skipping backup!");
+                doBackup = false;
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            if (string.IsNullOrEmpty(persistorPath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("persistorBasePath is empty in config, skipping backup!");
+                doBackup = false;
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
             EnsureLockFileAcquired();
@@ -225,13 +240,6 @@ namespace Onova
                 // This runs for Ctrl+C, SIGTERM, window close (X), etc.
                 ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
             };
-
-            string autoBackupFolderName = $"Versions Backups\\bk_{SanitizeFileName(version.ToString())}";
-
-            Directory.CreateDirectory(Path.Combine(_basePath, autoBackupFolderName));
-
-            string binZipPath = Path.Combine(_basePath, autoBackupFolderName, SanitizeFileName($"bin_{DateTime.Now:G}.zip"));
-            string dataZipPath = Path.Combine(_basePath, autoBackupFolderName, SanitizeFileName($"data_{DateTime.Now:G}.zip"));
 
             // Create backup-specific progress bars if needed
             IProgress<double>? binProgress = null;
@@ -261,6 +269,15 @@ namespace Onova
             // Add backup tasks if needed
             if (doBackup)
             {
+                string autoBackupFolderName = $"Versions Backups\\bk_{SanitizeFileName(backupVersion.ToString())}";
+
+                var backupFolder = Path.Combine(basePath, autoBackupFolderName);
+
+                Directory.CreateDirectory(backupFolder);
+
+                string binZipPath = Path.Combine(backupFolder, SanitizeFileName($"bin_{DateTime.Now:G}.zip"));
+                string dataZipPath = Path.Combine(backupFolder, SanitizeFileName($"data_{DateTime.Now:G}.zip"));
+
                 var backupBinTask = Task.Run(async () =>
                 {
                     try
@@ -287,7 +304,7 @@ namespace Onova
                     {
                         if (ZipPackageBackupper.StopServiceWithSC("MongoDBFenix"))
                         {
-                            await _backupper.CreateZipWithProgress(Path.Combine(_basePath, "data"), dataZipPath, dataProgress, cancellationToken);
+                            await _backupper.CreateZipWithProgress(persistorPath, dataZipPath, dataProgress, cancellationToken);
                         }
                         ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
                     }

@@ -22,7 +22,7 @@ namespace Onova
         /// <summary>
         /// Checks for new version and performs an update if available.
         /// </summary>
-        public static async Task CheckPerformUpdateAsync(this IUpdateManager manager, bool restart = true,
+        public static async Task CheckPerformUpdateAsync(this IUpdateManager manager, string basePath, string persistorBasePath, bool restart = true,
             IMultiProgressBar? multiProgress = null, CancellationToken cancellationToken = default)
         {
             // Check
@@ -30,7 +30,7 @@ namespace Onova
             if (result.CanUpdate && result.LastVersion != null)
             {
                 // Prepare
-                await manager.PrepareUpdateAsync(result.LastVersion, multiProgress, cancellationToken: cancellationToken);
+                await manager.PrepareUpdateAsync(result.LastVersion, result.LastVersion, basePath, persistorBasePath, multiProgress, cancellationToken: cancellationToken);
 
                 // Apply
                 manager.LaunchUpdater(result.LastVersion, restart);
