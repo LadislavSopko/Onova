@@ -207,20 +207,9 @@ namespace Onova
             IMultiProgressBar multiProgress = null, bool doBackup = true, bool doDownload = true, CancellationToken cancellationToken = default)
         {
 
-            if (string.IsNullOrEmpty(basePath))
+            if (string.IsNullOrEmpty(basePath) || string.IsNullOrEmpty(persistorPath))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("basePath is empty in config, skipping backup!");
                 doBackup = false;
-                Console.ForegroundColor = ConsoleColor.White;
-            }
-
-            if (string.IsNullOrEmpty(persistorPath))
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("persistorBasePath is empty in config, skipping backup!");
-                doBackup = false;
-                Console.ForegroundColor = ConsoleColor.White;
             }
 
             // Ensure that the current state is valid for this operation
@@ -342,6 +331,20 @@ namespace Onova
                 });
 
                 tasks.Add(downloadTask);
+            }
+
+            if (string.IsNullOrEmpty(basePath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\n'base_path' is empty in config, skipping backup!");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            if (string.IsNullOrEmpty(persistorPath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\n'persistor_base_path' is empty in config, skipping backup!");
+                Console.ForegroundColor = ConsoleColor.White;
             }
 
             // Wait for all tasks to complete
