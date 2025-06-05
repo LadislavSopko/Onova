@@ -41,7 +41,7 @@ namespace Onova.Updater
         {
             var updateeDirPath = Path.GetDirectoryName(_updateeFilePath);
 
-            if(updateeDirPath == default)
+            if (updateeDirPath == default)
             {
                 throw new ApplicationException("Missing updateeDirPath");
             }
@@ -63,10 +63,10 @@ namespace Onova.Updater
                     WorkingDirectory = updateeDirPath,
                     Arguments = _routedArgs,
                     UseShellExecute = true // avoid sharing console window with updatee
-                     //UseShellExecute = false, // we need continue on the same console as Updatee (it is console app)
-                     //RedirectStandardError  = false,
-                     //RedirectStandardInput  = false,
-                     //RedirectStandardOutput = false
+                                           //UseShellExecute = false, // we need continue on the same console as Updatee (it is console app)
+                                           //RedirectStandardError  = false,
+                                           //RedirectStandardInput  = false,
+                                           //RedirectStandardOutput = false
                 };
 
                 // If updatee is an .exe file - start it directly
@@ -112,7 +112,8 @@ namespace Onova.Updater
             Process process = new Process();
 
             var fileName = Path.Combine(newPath, "postUpdate.bat");
-            if (File.Exists(fileName)) {
+            if (File.Exists(fileName))
+            {
 
                 process.StartInfo.WorkingDirectory = newPath;
                 process.StartInfo.FileName = fileName;
@@ -137,7 +138,13 @@ namespace Onova.Updater
 
             try
             {
+                using Process processStop = Process.Start("net", "stop \"Fenix Manager\"");
+                processStop.WaitForExit();
+
                 RunCore();
+
+                using Process processStart = Process.Start("net", "start \"Fenix Manager\"");
+                processStart.WaitForExit();
             }
             catch (Exception ex)
             {
