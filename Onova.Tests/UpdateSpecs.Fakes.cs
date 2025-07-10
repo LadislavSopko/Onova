@@ -41,5 +41,26 @@ namespace Onova.Tests
                 return Task.CompletedTask;
             }
         }
+
+        private class FakePackageBackupper : IBackupper
+        {
+            public Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+            {
+                return Task.CompletedTask;
+            }
+        }
+
+        private class FakeMultibarProgress : IMultiProgressBar
+        {
+            public void CreateGlobalProgressBar()
+            {
+
+            }
+
+            public IProgress<double>? CreateProgressBar(string name, string description = "")
+            {
+                return new Progress<double>(p => Console.WriteLine($"{p}"));
+            }
+        }
     }
 }

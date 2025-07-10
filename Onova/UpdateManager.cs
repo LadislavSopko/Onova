@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Onova.Exceptions;
 using Onova.Internal;
 using Onova.Internal.Extensions;
@@ -15,7 +17,7 @@ using Onova.Services;
 namespace Onova
 {
 
-    
+
 
     /// <summary>
     /// Entry point for handling application updates.
@@ -26,6 +28,7 @@ namespace Onova
 
         private readonly IPackageResolver _resolver;
         private readonly IPackageExtractor _extractor;
+        private readonly IBackupper _backupper;
 
         private readonly string _storageDirPath;
         private readonly string _updaterFilePath;
@@ -42,7 +45,7 @@ namespace Onova
         /// <summary>
         /// Initializes an instance of <see cref="UpdateManager"/>.
         /// </summary>
-        public UpdateManager(AssemblyMetadata updatee, IPackageResolver resolver, IPackageExtractor extractor, AutomaticUpdateConfig cfg)
+        public UpdateManager(AssemblyMetadata updatee, IPackageResolver resolver, IPackageExtractor extractor, IBackupper backupper, AutomaticUpdateConfig cfg)
         {
 
             _config = cfg ?? new AutomaticUpdateConfig();
@@ -52,6 +55,7 @@ namespace Onova
             Updatee = updatee;
             _resolver = resolver;
             _extractor = extractor;
+            _backupper = backupper;
 
             // Set storage directory path
             _storageDirPath = Path.Combine(
@@ -70,8 +74,8 @@ namespace Onova
         /// <summary>
         /// Initializes an instance of <see cref="UpdateManager"/> on the entry assembly.
         /// </summary>
-        public UpdateManager(IPackageResolver resolver, IPackageExtractor extractor, AutomaticUpdateConfig cfg)
-            : this(AssemblyMetadata.FromEntryAssembly(), resolver, extractor, cfg)
+        public UpdateManager(IPackageResolver resolver, IPackageExtractor extractor, IBackupper backupper, AutomaticUpdateConfig cfg)
+            : this(AssemblyMetadata.FromEntryAssembly(), resolver, extractor, backupper, cfg)
         {
         }
 
@@ -131,7 +135,7 @@ namespace Onova
                     var lastVersion = versions.Where(v => v.Version <= max_updatable).Select(v => v.Version).Max();
                     var canUpdate = lastVersion != null; // && Updatee.Version < lastVersion; (show all possible) we need also downgrade
 
-                    return canUpdate ? CheckForUpdatesResultWithNote.OkWithNote(versions, lastVersion, canUpdate):
+                    return canUpdate ? CheckForUpdatesResultWithNote.OkWithNote(versions, lastVersion, canUpdate) :
                         CheckForUpdatesResult.NoUpdate();
 
                 }
@@ -139,11 +143,12 @@ namespace Onova
                 {
                     return CheckForUpdatesResult.FromError(ex);
                 }
-            } else
+            }
+            else
             {
                 return CheckForUpdatesResult.NoUpdate();
             }
-           
+
         }
 
         /// <inheritdoc />
@@ -157,7 +162,6 @@ namespace Onova
             var packageContentDirPath = GetPackageContentDirPath(version);
 
             // Package content directory should exist
-            // Package file should have been deleted after extraction
             // Updater file should exist
             return !File.Exists(packageFilePath) &&
                    Directory.Exists(packageContentDirPath) &&
@@ -199,18 +203,19 @@ namespace Onova
         }
 
         /// <inheritdoc />
-        public async Task PrepareUpdateAsync(Version version,
-            IProgress<double>? progress = null, CancellationToken cancellationToken = default)
+        public async Task PrepareUpdateAsync(Version version, Version? backupVersion = null, string basePath = "", string persistorPath = "",
+            IMultiProgressBar multiProgress = null, bool doBackup = true, bool doDownload = true, CancellationToken cancellationToken = default)
         {
+
+            if (string.IsNullOrEmpty(basePath) || string.IsNullOrEmpty(persistorPath))
+            {
+                doBackup = false;
+            }
+
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
             EnsureLockFileAcquired();
             EnsureUpdaterNotLaunched();
-
-            // Set up progress mixer
-            var progressMixer = progress != null
-                ? new ProgressMixer(progress)
-                : null;
 
             // Get package file path and content directory path
             var packageFilePath = GetPackageFilePath(version);
@@ -219,26 +224,146 @@ namespace Onova
             // Ensure storage directory exists
             Directory.CreateDirectory(_storageDirPath);
 
-            // Download package
-            await _resolver.DownloadPackageAsync(version, packageFilePath,
-                progressMixer?.Split(0.9), // 0% -> 90%
-                cancellationToken
-            );
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                // This runs for Ctrl+C, SIGTERM, window close (X), etc.
+                ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
+            };
 
-            // Ensure package content directory exists and is empty
-            DirectoryEx.Reset(packageContentDirPath);
+            // Create backup-specific progress bars if needed
+            IProgress<double>? binProgress = null;
+            IProgress<double>? dataProgress = null;
 
-            // Extract package contents
-            await _extractor.ExtractPackageAsync(packageFilePath, packageContentDirPath,
-                progressMixer?.Split(0.1), // 90% -> 100%
-                cancellationToken
-            );
+            if (doBackup)
+            {
+                binProgress = multiProgress.CreateProgressBar("Bin Backup", "Compressing bin folder...");
+                dataProgress = multiProgress.CreateProgressBar("Data Backup", "Compressing data folder...");
+            }
 
-            // Delete package
-            File.Delete(packageFilePath);
+            // Create download-specific progress bars if needed
+            IProgress<double>? downloadProgress = null;
+            IProgress<double>? extractingProgress = null;
 
-            // Extract updater
-            await Assembly.GetExecutingAssembly().ExtractManifestResourceAsync(UpdaterResourceName, _updaterFilePath);
+            if (doDownload)
+            {
+                downloadProgress = multiProgress.CreateProgressBar("Download", "Downloading package...");
+                extractingProgress = multiProgress.CreateProgressBar("Extracting", "Extracting package...");
+            }
+
+            multiProgress.CreateGlobalProgressBar();
+
+            // Create task list
+            var tasks = new List<Task>();
+
+            // Add backup tasks if needed
+            if (doBackup)
+            {
+                string autoBackupFolderName = $"Versions Backups\\bk_{SanitizeFileName(backupVersion.ToString())}";
+
+                var backupFolder = Path.Combine(basePath, autoBackupFolderName);
+
+                Directory.CreateDirectory(backupFolder);
+
+                string binZipPath = Path.Combine(backupFolder, SanitizeFileName($"bin_{DateTime.Now:G}.zip"));
+                string dataZipPath = Path.Combine(backupFolder, SanitizeFileName($"data_{DateTime.Now:G}.zip"));
+
+                var backupBinTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _backupper.CreateZipWithProgress(AppDomain.CurrentDomain.BaseDirectory, binZipPath, binProgress, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"\nBackup bin failed: {ex.Message}");
+                        if (File.Exists(binZipPath))
+                        {
+                            try
+                            {
+                                File.Delete(binZipPath);
+                            }
+                            catch { /* Ignore cleanup errors */ }
+                        }
+                    }
+                });
+
+                var backupDataTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        if (ZipPackageBackupper.StopServiceWithSC("MongoDBFenix"))
+                        {
+                            await _backupper.CreateZipWithProgress(persistorPath, dataZipPath, dataProgress, cancellationToken);
+                        }
+                        ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"\nBackup data failed: {ex.Message}");
+                        if (File.Exists(dataZipPath))
+                        {
+                            try
+                            {
+                                File.Delete(dataZipPath);
+                            }
+                            catch { /* Ignore cleanup errors */ }
+                        }
+                    }
+                });
+
+                tasks.Add(backupBinTask);
+                tasks.Add(backupDataTask);
+            }
+
+            if (doDownload)
+            {
+                var downloadTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _resolver.DownloadPackageAsync(version, packageFilePath, downloadProgress, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"\nDownload failed: {ex.Message}");
+                        throw;
+                    }
+                });
+
+                tasks.Add(downloadTask);
+            }
+
+            if (string.IsNullOrEmpty(basePath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\n'base_path' is empty in config, skipping backup!");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            if (string.IsNullOrEmpty(persistorPath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("\n'persistor_base_path' is empty in config, skipping backup!");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+
+            // Wait for all tasks to complete
+            await Task.WhenAll(tasks);
+
+            if (doDownload)
+            {
+                DirectoryEx.Reset(packageContentDirPath);
+                await _extractor.ExtractPackageAsync(packageFilePath, packageContentDirPath, extractingProgress, cancellationToken);
+
+                // Delete package file
+                if (File.Exists(packageFilePath))
+                {
+                    File.Delete(packageFilePath);
+                }
+
+                // Extract updater
+                await Assembly.GetExecutingAssembly().ExtractManifestResourceAsync(UpdaterResourceName, _updaterFilePath);
+            }
         }
 
         /// <inheritdoc />
@@ -283,9 +408,17 @@ namespace Onova
             }
 
             // Create and start updater process
-            var updaterProcess = new Process {StartInfo = updaterStartInfo};
+            var updaterProcess = new Process { StartInfo = updaterStartInfo };
             using (updaterProcess)
                 updaterProcess.Start();
+        }
+
+        private static string SanitizeFileName(string input)
+        {
+            // Replace invalid filename characters with underscore
+            string invalidChars = new string(Path.GetInvalidFileNameChars());
+            string invalidRegex = $"[{Regex.Escape(invalidChars)}]";
+            return Regex.Replace(input, invalidRegex, "_");
         }
 
         /// <inheritdoc />
@@ -298,6 +431,6 @@ namespace Onova
             }
         }
 
-        
+
     }
 }

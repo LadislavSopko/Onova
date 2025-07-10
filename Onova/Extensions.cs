@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Onova.Internal;
+using Onova.Services;
 
 namespace Onova
 {
@@ -21,15 +22,15 @@ namespace Onova
         /// <summary>
         /// Checks for new version and performs an update if available.
         /// </summary>
-        public static async Task CheckPerformUpdateAsync(this IUpdateManager manager, bool restart = true,
-            IProgress<double>? progress = null, CancellationToken cancellationToken = default)
+        public static async Task CheckPerformUpdateAsync(this IUpdateManager manager, string basePath, string persistorBasePath, bool restart = true,
+            IMultiProgressBar? multiProgress = null, CancellationToken cancellationToken = default)
         {
             // Check
             var result = await manager.CheckForUpdatesAsync(null, cancellationToken);
             if (result.CanUpdate && result.LastVersion != null)
             {
                 // Prepare
-                await manager.PrepareUpdateAsync(result.LastVersion, progress, cancellationToken);
+                await manager.PrepareUpdateAsync(result.LastVersion, result.LastVersion, basePath, persistorBasePath, multiProgress, cancellationToken: cancellationToken);
 
                 // Apply
                 manager.LaunchUpdater(result.LastVersion, restart);

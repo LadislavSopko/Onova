@@ -9,6 +9,33 @@ using Onova.Services;
 
 namespace Onova.Tests.Dummy
 {
+    class Backuper : IBackupper
+    {
+        public Task BackupAsync(string packageName, string version, string targetPath, CancellationToken cancellationToken)
+        {
+            // Do nothing
+            return Task.CompletedTask;
+        }
+
+        public Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    class ProgreesFake : IMultiProgressBar
+    {
+        public void CreateGlobalProgressBar()
+        {
+            
+        }
+
+        public IProgress<double>? CreateProgressBar(string name, string description = "")
+        {
+            return new Progress<double>(p => Console.WriteLine($"{name}: {p:P0}"));
+        }
+    }
+
     // This executable is used as dummy for end-to-end testing.
     // It can print its current version and use Onova to update.
 
@@ -25,6 +52,7 @@ namespace Onova.Tests.Dummy
         private static readonly IUpdateManager UpdateManager = new UpdateManager(
             new LocalPackageResolver(PackagesDirPath, "*.onv"),
             new ZipPackageExtractor(),
+            new Backuper(),
             new AutomaticUpdateConfig()
             {
                 Active = true
@@ -54,9 +82,9 @@ namespace Onova.Tests.Dummy
             else if (command == "update" || command == "update-and-restart")
             {
                 var restart = command == "update-and-restart";
-                var progressHandler = new Progress<double>(p => Console.WriteLine($"Progress: {p:P0}"));
+                var progressHandler = new ProgreesFake();
 
-                await UpdateManager.CheckPerformUpdateAsync(restart, progressHandler);
+                await UpdateManager.CheckPerformUpdateAsync("c:\\3U\\OGSM", "c:\\3U\\OGSM\\data", restart, progressHandler);
             }
         }
     }

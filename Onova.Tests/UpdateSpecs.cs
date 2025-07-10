@@ -11,6 +11,20 @@ using Xunit;
 
 namespace Onova.Tests
 {
+    class Backuper : IBackupper
+    {
+        public Task BackupAsync(string packageName, string version, string targetPath, CancellationToken cancellationToken)
+        {
+            // Do nothing
+            return Task.CompletedTask;
+        }
+
+        public Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     public partial class UpdateSpecs : IDisposable
     {
         private string TempDirPath { get; } = Path.Combine(Directory.GetCurrentDirectory(), $"{nameof(UpdateSpecs)}_{Guid.NewGuid()}");
@@ -48,6 +62,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -73,7 +88,7 @@ namespace Onova.Tests
                     "Onova", updatee.Name)
             );
 
-          
+
             VersionWithInfo[] availableVersions = new[]
             {
                 new VersionWithInfo(Version.Parse("1.0.0.0"), "url1", "note 1"),
@@ -90,6 +105,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -126,6 +142,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -151,7 +168,7 @@ namespace Onova.Tests
                     "Onova", updatee.Name)
             );
 
-            
+
             VersionWithInfo[] availableVersions = new[]
             {
                 new VersionWithInfo(Version.Parse("1.0"), "url1", "note 1"),
@@ -168,13 +185,14 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
             var version = Version.Parse("2.0");
 
             // Act
-            await updateManager.PrepareUpdateAsync(version);
+            await updateManager.PrepareUpdateAsync(version, multiProgress: new FakeMultibarProgress());
 
             // Assert
             updateManager.IsUpdatePrepared(version).Should().BeTrue();
@@ -209,6 +227,7 @@ namespace Onova.Tests
                 updatee,
                 new FakePackageResolver(availableVersions),
                 new FakePackageExtractor(),
+                new Backuper(),
                 cfg
             );
 
@@ -219,7 +238,7 @@ namespace Onova.Tests
             };
 
             foreach (var version in expectedPreparedUpdateVersions)
-                await manager.PrepareUpdateAsync(version);
+                await manager.PrepareUpdateAsync(version, multiProgress: new FakeMultibarProgress());
 
             // Act
             var preparedUpdateVersions = manager.GetPreparedUpdates();
@@ -291,5 +310,116 @@ namespace Onova.Tests
         //    // Assert
         //    dummy.GetLastRunArguments(expectedFinalVersion).Should().BeEquivalentTo(args);
         //}
+
+        [Fact]
+        public async Task I_can_skip_backup_if_path_empty()
+        {
+            // Arrange
+            var updatee = new AssemblyMetadata("TestUpdatee", Version.Parse("1.0"), "");
+
+            // Cleanup storage directory (TODO: move this to API)
+            DirectoryEx.DeleteIfExists(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Onova", updatee.Name)
+            );
+
+            var availableVersions = Array.Empty<VersionWithInfo>();
+
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
+            };
+
+            using var updateManager = new UpdateManager(
+                updatee,
+                new FakePackageResolver(availableVersions),
+                new FakePackageExtractor(),
+                new FakePackageBackupper(),
+                cfg
+            );
+
+            string basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Onova", updatee.Name);
+
+            // Act
+            await updateManager.PrepareUpdateAsync(new Version(1, 0), multiProgress: new FakeMultibarProgress(), doDownload: false);
+
+            updateManager.GetPreparedUpdates().Should().BeEmpty();
+            Directory.Exists(Path.Combine(basePath, "Versions Backups")).Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task I_can_backup_with_no_download()
+        {
+            // Arrange
+            var updatee = new AssemblyMetadata("TestUpdatee", Version.Parse("1.0"), "");
+
+            // Cleanup storage directory (TODO: move this to API)
+            DirectoryEx.DeleteIfExists(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Onova", updatee.Name)
+            );
+
+            var availableVersions = Array.Empty<VersionWithInfo>();
+
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
+            };
+
+            using var updateManager = new UpdateManager(
+                updatee,
+                new FakePackageResolver(availableVersions),
+                new FakePackageExtractor(),
+                new FakePackageBackupper(),
+                cfg
+            );
+
+            string basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Onova", updatee.Name);
+
+            // Act
+            await updateManager.PrepareUpdateAsync(new Version(1, 0), new Version(1, 0), basePath, "fakePath", multiProgress: new FakeMultibarProgress(), doDownload: false);
+
+            updateManager.GetPreparedUpdates().Should().BeEmpty();
+            Directory.Exists(Path.Combine(basePath, "Versions Backups")).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task I_can_backup_and_download()
+        {
+            // Arrange
+            var updatee = new AssemblyMetadata("TestUpdatee", Version.Parse("1.0"), "");
+
+            // Cleanup storage directory (TODO: move this to API)
+            DirectoryEx.DeleteIfExists(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Onova", updatee.Name)
+            );
+
+            var availableVersions = Array.Empty<VersionWithInfo>();
+
+            var cfg = new AutomaticUpdateConfig()
+            {
+                Active = true
+            };
+
+            using var updateManager = new UpdateManager(
+                updatee,
+                new FakePackageResolver(availableVersions),
+                new FakePackageExtractor(),
+                new FakePackageBackupper(),
+                cfg
+            );
+
+            string basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Onova", updatee.Name);
+
+            // Act
+            await updateManager.PrepareUpdateAsync(new Version(1, 0), new Version(1, 0), basePath, "fakePath", multiProgress: new FakeMultibarProgress());
+
+            updateManager.GetPreparedUpdates().Should().NotBeEmpty();
+            Directory.Exists(Path.Combine(basePath, "Versions Backups")).Should().BeTrue();
+        }
     }
 }
