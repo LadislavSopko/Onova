@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -14,15 +15,59 @@ namespace Onova.Internal.Extensions
             string requestUri,
             CancellationToken cancellationToken = default)
         {
-            using var response = await client.GetAsync(
-                requestUri,
-                HttpCompletionOption.ResponseContentRead,
-                cancellationToken
-            );
+            // Try curl.exe first (works on Win11), fallback to HttpClient (works on Win10)
+            try
+            {
+                return await GetStringWithCurlAsync(client, requestUri);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // curl.exe not found, fallback to HttpClient
+            }
 
+            // Fallback: standard HttpClient
+            using var response = await client.GetAsync(requestUri, cancellationToken);
             response.EnsureSuccessStatusCode();
-
             return await response.Content.ReadAsStringAsync();
+        }
+
+        private static async Task<string> GetStringWithCurlAsync(HttpClient client, string requestUri)
+        {
+            string? authHeader = null;
+            if (client.DefaultRequestHeaders.Authorization != null)
+            {
+                var auth = client.DefaultRequestHeaders.Authorization;
+                authHeader = $"{auth.Scheme} {auth.Parameter}";
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "curl.exe",
+                Arguments = authHeader != null
+                    ? $"-s -H \"Authorization: {authHeader}\" \"{requestUri}\""
+                    : $"-s \"{requestUri}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi);
+            if (process == null)
+                throw new InvalidOperationException("Failed to start curl.exe");
+
+            var output = await process.StandardOutput.ReadToEndAsync();
+            var error = await process.StandardError.ReadToEndAsync();
+
+            await Task.Run(() => process.WaitForExit());
+
+            if (process.ExitCode != 0)
+                throw new HttpRequestException($"curl failed ({process.ExitCode}): {error}");
+
+            if (output.Contains("403") && output.Contains("Forbidden"))
+                throw new HttpRequestException("Response status code does not indicate success: 403 (Forbidden).");
+
+            return output;
         }
 
         public static async Task<JsonElement> ReadAsJsonAsync(

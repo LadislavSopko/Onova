@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -50,9 +51,9 @@ namespace Onova.Services
         {
             var map = new Dictionary<Version, VersionWithInfo>();
 
-            
             // Get manifest
-            var response = await _httpClient.GetStringAsync(_manifestUrl, cancellationToken);
+            string response;
+            response = await _httpClient.GetStringAsync(_manifestUrl, cancellationToken);
             
 
             foreach (var line in response.Split("\n"))
@@ -116,12 +117,67 @@ namespace Onova.Services
             if (string.IsNullOrWhiteSpace(packageInfo.Data))
                 throw new PackageNotFoundException(version);
 
-            // Download
+            // Try curl.exe first (works on Win11), fallback to HttpClient (works on Win10)
+            try
+            {
+                await DownloadWithCurlAsync(packageInfo.Data, destFilePath, progress);
+                return;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // curl.exe not found, fallback to HttpClient
+            }
+
+            // Fallback: standard HttpClient
             using var response = await _httpClient.GetAsync(packageInfo.Data, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             using var output = File.Create(destFilePath);
             await response.Content.CopyToStreamAsync(output, progress, cancellationToken);
+        }
+
+        private async Task DownloadWithCurlAsync(string url, string destFilePath, IProgress<double>? progress)
+        {
+            string authArgs = "";
+            if (_httpClient.DefaultRequestHeaders.Authorization != null)
+            {
+                var auth = _httpClient.DefaultRequestHeaders.Authorization;
+                authArgs = $"-H \"Authorization: {auth.Scheme} {auth.Parameter}\"";
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "curl.exe",
+                Arguments = $"-s -L {authArgs} -o \"{destFilePath}\" \"{url}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(psi);
+            if (process == null)
+                throw new InvalidOperationException("Failed to start curl.exe for download");
+
+            var error = await process.StandardError.ReadToEndAsync();
+            await Task.Run(() => process.WaitForExit());
+
+            if (process.ExitCode != 0)
+                throw new System.Net.Http.HttpRequestException($"curl download failed ({process.ExitCode}): {error}");
+
+            var fileInfo = new FileInfo(destFilePath);
+            if (!fileInfo.Exists || fileInfo.Length == 0)
+            {
+                var content = fileInfo.Exists ? File.ReadAllText(destFilePath) : "";
+                if (content.Contains("403") || content.Contains("Forbidden"))
+                {
+                    File.Delete(destFilePath);
+                    throw new System.Net.Http.HttpRequestException("Response status code does not indicate success: 403 (Forbidden).");
+                }
+                throw new System.Net.Http.HttpRequestException("Download failed - file is empty or missing");
+            }
+
+            progress?.Report(1.0);
         }
     }
 }
