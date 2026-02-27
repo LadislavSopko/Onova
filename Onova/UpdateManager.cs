@@ -367,7 +367,7 @@ namespace Onova
         }
 
         /// <inheritdoc />
-        public void LaunchUpdater(Version version, bool restart, string restartArguments)
+        public void LaunchUpdater(Version version, bool restart, string restartArguments, string oldVersion = "", string newVersion = "")
         {
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
@@ -382,7 +382,7 @@ namespace Onova
             var routedArgs = restartArguments.GetBytes().ToBase64();
 
             // Prepare arguments
-            var updaterArgs = $"\"{Updatee.FilePath}\" \"{packageContentDirPath}\" \"{restart}\" \"{routedArgs}\"";
+            var updaterArgs = $"\"{Updatee.FilePath}\" \"{packageContentDirPath}\" \"{restart}\" \"{routedArgs}\" \"{oldVersion}\" \"{newVersion}\"";
 
             // Decide if updater needs to be elevated
             var updateeDirPath = Path.GetDirectoryName(Updatee.FilePath);

@@ -13,8 +13,10 @@ namespace Onova.Updater
             var packageContentDirPath = args[1];
             var restartUpdatee = bool.Parse(args[2]);
             var routedArgs = args[3].FromBase64().GetString();
+            var oldVersion = args.Length > 4 ? args[4] : "";
+            var newVersion = args.Length > 5 ? args[5] : "";
 
-            using var updater = new Updater(updateeFilePath, packageContentDirPath, restartUpdatee, routedArgs);
+            using var updater = new Updater(updateeFilePath, packageContentDirPath, restartUpdatee, routedArgs, oldVersion, newVersion);
             updater.Run();
         }
     }

@@ -42,6 +42,6 @@ namespace Onova
         /// Launches an external executable that will apply an update to given version, once this application exits.
         /// The updater can be instructed to also restart the application after it's updated.
         /// </summary>
-        void LaunchUpdater(Version version, bool restart, string restartArguments);
+        void LaunchUpdater(Version version, bool restart, string restartArguments, string oldVersion = "", string newVersion = "");
     }
 }

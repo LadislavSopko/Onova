@@ -13,6 +13,8 @@ namespace Onova.Updater
         private readonly string _packageContentDirPath;
         private readonly bool _restartUpdatee;
         private readonly string _routedArgs;
+        private readonly string _oldVersion;
+        private readonly string _newVersion;
 
         public static readonly TextWriter _log = File.CreateText(
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Log.txt")
@@ -22,12 +24,16 @@ namespace Onova.Updater
             string updateeFilePath,
             string packageContentDirPath,
             bool restartUpdatee,
-            string routedArgs)
+            string routedArgs,
+            string oldVersion,
+            string newVersion)
         {
             _updateeFilePath = updateeFilePath;
             _packageContentDirPath = packageContentDirPath;
             _restartUpdatee = restartUpdatee;
             _routedArgs = routedArgs;
+            _oldVersion = oldVersion;
+            _newVersion = newVersion;
         }
 
         public static void WriteLog(string content)
@@ -54,6 +60,30 @@ namespace Onova.Updater
             // Copy over the package contents
             WriteLog("Copying package contents from storage to updatee's directory...");
             DirectoryEx.Copy(_packageContentDirPath, updateeDirPath);
+
+            if (!string.IsNullOrEmpty(_oldVersion))
+            {
+                var quarantine = Path.Combine(updateeDirPath, "DLLS");
+                Directory.CreateDirectory(quarantine);
+                foreach (var dll in Directory.GetFiles(updateeDirPath, "*.dll"))
+                {
+                    var v = FileVersionInfo.GetVersionInfo(dll).FileVersion;
+                    if (v == _oldVersion)
+                    {
+                        WriteLog($"Removing old DLL: {dll}");
+                        var dest = Path.Combine(quarantine, Path.GetFileName(dll));
+                        if (File.Exists(dest)) File.Delete(dest);
+                        File.Move(dll, dest);
+                        var pdb = Path.ChangeExtension(dll, ".pdb");
+                        if (File.Exists(pdb))
+                        {
+                            var pdbDest = Path.Combine(quarantine, Path.GetFileName(pdb));
+                            if (File.Exists(pdbDest)) File.Delete(pdbDest);
+                            File.Move(pdb, pdbDest);
+                        }
+                    }
+                }
+            }
 
             // Restart updatee if requested
             if (_restartUpdatee)
@@ -117,6 +147,7 @@ namespace Onova.Updater
 
                 process.StartInfo.WorkingDirectory = newPath;
                 process.StartInfo.FileName = fileName;
+                process.StartInfo.Arguments = _oldVersion;
                 process.Start();
                 process.WaitForExit();
                 process.Close();
@@ -133,7 +164,8 @@ namespace Onova.Updater
                 $"  UpdateeFilePath = {_updateeFilePath}" + Environment.NewLine +
                 $"  PackageContentDirPath = {_packageContentDirPath}" + Environment.NewLine +
                 $"  RestartUpdatee = {_restartUpdatee}" + Environment.NewLine +
-                $"  RoutedArgs = {_routedArgs}"
+                $"  RoutedArgs = {_routedArgs}" +
+                $"  OldVersion = {_oldVersion}"
             );
 
             try
@@ -143,8 +175,12 @@ namespace Onova.Updater
 
                 RunCore();
 
-                using Process processStart = Process.Start("net", "start \"Fenix Manager\"");
-                processStart.WaitForExit();
+                Version v = new(_newVersion);
+                if (v.Build >= 100)
+                {
+                    using Process processStart = Process.Start("net", "start \"Fenix Manager\"");
+                    processStart.WaitForExit();
+                }
             }
             catch (Exception ex)
             {
