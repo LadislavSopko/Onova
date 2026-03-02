@@ -203,10 +203,9 @@ namespace Onova
         }
 
         /// <inheritdoc />
-        public async Task PrepareUpdateAsync(Version version, Version? backupVersion = null, string basePath = "", string persistorPath = "",
-            IMultiProgressBar multiProgress = null, bool doBackup = true, bool doDownload = true, CancellationToken cancellationToken = default)
+        public async Task PrepareUpdateAsync(Version version, Version? backupVersion = null, string basePath = "C:\\3U\\OGSM", string persistorPath = "c:\\3U\\OGSM\\data",
+            IMultiProgressBar multiProgress = null, bool doBackup = true, bool doDownload = true, List<string>? silentFiles = null, CancellationToken cancellationToken = default)
         {
-
             if (string.IsNullOrEmpty(basePath) || string.IsNullOrEmpty(persistorPath))
             {
                 doBackup = false;
@@ -226,7 +225,6 @@ namespace Onova
 
             AppDomain.CurrentDomain.ProcessExit += (s, e) =>
             {
-                // This runs for Ctrl+C, SIGTERM, window close (X), etc.
                 ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
             };
 
@@ -255,34 +253,28 @@ namespace Onova
             // Create task list
             var tasks = new List<Task>();
 
+            string autoBackupFolderName = $"Versions Backups\\bk_{SanitizeFileName(backupVersion.ToString())}";
+            var backupFolder = Path.Combine(basePath, autoBackupFolderName);
+            Directory.CreateDirectory(backupFolder);
+
             // Add backup tasks if needed
             if (doBackup)
             {
-                string autoBackupFolderName = $"Versions Backups\\bk_{SanitizeFileName(backupVersion.ToString())}";
-
-                var backupFolder = Path.Combine(basePath, autoBackupFolderName);
-
-                Directory.CreateDirectory(backupFolder);
-
-                string binZipPath = Path.Combine(backupFolder, SanitizeFileName($"bin_{DateTime.Now:G}.zip"));
+                string binZipPath = Path.Combine(backupFolder, SanitizeFileName($"Fenix_Core_{DateTime.Now:G}.zip"));
                 string dataZipPath = Path.Combine(backupFolder, SanitizeFileName($"data_{DateTime.Now:G}.zip"));
 
                 var backupBinTask = Task.Run(async () =>
                 {
                     try
                     {
-                        await _backupper.CreateZipWithProgress(AppDomain.CurrentDomain.BaseDirectory, binZipPath, binProgress, cancellationToken);
+                        await _backupper.CreateZipWithProgress(AppDomain.CurrentDomain.BaseDirectory, binZipPath, "Fenix_Core", binProgress, cancellationToken);
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"\nBackup bin failed: {ex.Message}");
                         if (File.Exists(binZipPath))
                         {
-                            try
-                            {
-                                File.Delete(binZipPath);
-                            }
-                            catch { /* Ignore cleanup errors */ }
+                            try { File.Delete(binZipPath); } catch { }
                         }
                     }
                 });
@@ -293,7 +285,7 @@ namespace Onova
                     {
                         if (ZipPackageBackupper.StopServiceWithSC("MongoDBFenix"))
                         {
-                            await _backupper.CreateZipWithProgress(persistorPath, dataZipPath, dataProgress, cancellationToken);
+                            await _backupper.CreateZipWithProgress(persistorPath, dataZipPath, "data", dataProgress, cancellationToken);
                         }
                         ZipPackageBackupper.StartServiceWithSC("MongoDBFenix");
                     }
@@ -302,11 +294,7 @@ namespace Onova
                         Console.WriteLine($"\nBackup data failed: {ex.Message}");
                         if (File.Exists(dataZipPath))
                         {
-                            try
-                            {
-                                File.Delete(dataZipPath);
-                            }
-                            catch { /* Ignore cleanup errors */ }
+                            try { File.Delete(dataZipPath); } catch { }
                         }
                     }
                 });
@@ -333,6 +321,27 @@ namespace Onova
                 tasks.Add(downloadTask);
             }
 
+
+            string silentZipPath = Path.Combine(backupFolder, SanitizeFileName($"Essential_{DateTime.Now:G}.zip"));
+
+            var silentBackupTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await _backupper.CreateZipWithoutProgress(AppDomain.CurrentDomain.BaseDirectory, persistorPath, silentZipPath, silentFiles, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\nSilent backup failed: {ex.Message}");
+                    if (File.Exists(silentZipPath))
+                    {
+                        try { File.Delete(silentZipPath); } catch { }
+                    }
+                }
+            });
+
+            tasks.Add(silentBackupTask);
+
             if (string.IsNullOrEmpty(basePath))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -355,13 +364,9 @@ namespace Onova
                 DirectoryEx.Reset(packageContentDirPath);
                 await _extractor.ExtractPackageAsync(packageFilePath, packageContentDirPath, extractingProgress, cancellationToken);
 
-                // Delete package file
                 if (File.Exists(packageFilePath))
-                {
                     File.Delete(packageFilePath);
-                }
 
-                // Extract updater
                 await Assembly.GetExecutingAssembly().ExtractManifestResourceAsync(UpdaterResourceName, _updaterFilePath);
             }
         }

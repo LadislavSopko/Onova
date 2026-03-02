@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Onova.Services
 {
@@ -18,7 +19,7 @@ namespace Onova.Services
     {
         /// <inheritdoc/>
 
-        public async Task CreateZipWithProgress(string sourceDirPath, string destFilePath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
+        public async Task CreateZipWithProgress(string sourceDirPath, string destFilePath, string folderInsideZipName, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
         {
             //var sourceDirPath = Path.Combine(BasePath, folderName);
             //var destFilePath = Path.Combine(BasePath, SanitizeFileName(zipName));
@@ -51,7 +52,7 @@ namespace Onova.Services
                     }
 
                     // Get the relative path for the entry name
-                    var entryName = file.Substring(sourceDirPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    var entryName = Path.Combine(folderInsideZipName, file.Substring(sourceDirPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
                     // Create entry in the archive
                     var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
@@ -69,6 +70,78 @@ namespace Onova.Services
                         progress?.Report(1.0 * totalBytesCopied / totalBytes);
                     } while (bytesCopied > 0);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Compress files withtou progress for silent operations, can filter based on files
+        /// </summary>
+        /// <param name="folderFenixName"></param>
+        /// <param name="folderDataName"></param>
+        /// <param name="destFilePath"></param>
+        /// <param name="files"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task CreateZipWithoutProgress(string folderFenixName, string folderDataName, string destFilePath, List<string>? files, CancellationToken cancellationToken = default)
+        {
+            if (!Directory.Exists(folderFenixName))
+                return;
+
+            var allFilesFenix = Directory.GetFiles(folderFenixName, "*", SearchOption.TopDirectoryOnly);
+            var allFilesData = Directory.GetFiles(folderDataName, "*", SearchOption.AllDirectories);
+
+            var filesToCompressFenix = files != null
+                ? allFilesFenix.Where(f =>
+                {
+                    var relativeName = f.Substring(folderFenixName.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    return files.Any(filter => relativeName.Contains(filter));
+                }).ToList()
+                : allFilesFenix.ToList();
+
+            var filesToCompressData = files != null
+                ? allFilesData.Where(f =>
+                {
+                    var relativeName = f.Substring(folderDataName.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    return files.Any(filter => relativeName.StartsWith(filter));
+                }).ToList()
+                : allFilesData.ToList();
+
+            using var archive = ZipFile.Open(destFilePath, ZipArchiveMode.Create);
+
+            foreach (var file in filesToCompressFenix)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var entryName = Path.Combine("Fenix_Core", file.Substring(folderFenixName.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+
+                using var input = File.OpenRead(file);
+                using var output = entry.Open();
+                using var buffer = PooledBuffer.ForStream();
+
+                int bytesCopied;
+                do
+                {
+                    bytesCopied = await input.CopyBufferedToAsync(output, buffer.Array, cancellationToken);
+                } while (bytesCopied > 0);
+            }
+
+            foreach (var file in filesToCompressData)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var entryName = Path.Combine("data", file.Substring(folderDataName.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+
+                using var input = File.OpenRead(file);
+                using var output = entry.Open();
+                using var buffer = PooledBuffer.ForStream();
+
+                int bytesCopied;
+                do
+                {
+                    bytesCopied = await input.CopyBufferedToAsync(output, buffer.Array, cancellationToken);
+                } while (bytesCopied > 0);
             }
         }
 
