@@ -211,6 +211,11 @@ namespace Onova
                 doBackup = false;
             }
 
+            if (backupVersion == null)
+            {
+                backupVersion = new Version(0, 0, 0, 0);
+            }
+
             // Ensure that the current state is valid for this operation
             EnsureNotDisposed();
             EnsureLockFileAcquired();

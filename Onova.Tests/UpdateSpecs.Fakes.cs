@@ -44,7 +44,12 @@ namespace Onova.Tests
 
         private class FakePackageBackupper : IBackupper
         {
-            public Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+            public Task CreateZipWithProgress(string folderName, string zipName, string folderInsideZipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task CreateZipWithoutProgress(string folderFenixName, string folderDataName, string zipName, List<string>? files = null, CancellationToken cancellationToken = default)
             {
                 return Task.CompletedTask;
             }

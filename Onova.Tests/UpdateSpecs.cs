@@ -1,12 +1,13 @@
-﻿using System;
+﻿using FluentAssertions;
+using Onova.Models;
+using Onova.Services;
+using Onova.Tests.Internal;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
-using Onova.Models;
-using Onova.Services;
-using Onova.Tests.Internal;
 using Xunit;
 
 namespace Onova.Tests
@@ -19,7 +20,12 @@ namespace Onova.Tests
             return Task.CompletedTask;
         }
 
-        public Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+        public Task CreateZipWithProgress(string folderName, string zipName, string folderInsideZipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task CreateZipWithoutProgress(string folderFenixName, string folderDataName, string zipName, List<string>? files = null, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Onova.Models;
+using Onova.Services;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Onova.Models;
-using Onova.Services;
 
 namespace Onova.Tests.Dummy
 {
@@ -17,7 +18,12 @@ namespace Onova.Tests.Dummy
             return Task.CompletedTask;
         }
 
-        public Task CreateZipWithProgress(string folderName, string zipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+        public Task CreateZipWithProgress(string folderName, string zipName, string folderInsideZipName, IProgress<double> progress, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task CreateZipWithoutProgress(string folderFenixName, string folderDataName, string zipName, List<string>? files = null, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
