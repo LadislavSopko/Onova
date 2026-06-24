@@ -262,6 +262,10 @@ namespace Onova
             var backupFolder = Path.Combine(basePath, autoBackupFolderName);
             Directory.CreateDirectory(backupFolder);
 
+            var deletedCount = CleanupOldBackups(backupFolder);
+            if (deletedCount > 0)
+                Console.WriteLine($"Cleaned up {deletedCount} old backup file(s).");
+
             // Add backup tasks if needed
             if (doBackup)
             {
@@ -429,6 +433,26 @@ namespace Onova
             string invalidChars = new string(Path.GetInvalidFileNameChars());
             string invalidRegex = $"[{Regex.Escape(invalidChars)}]";
             return Regex.Replace(input, invalidRegex, "_");
+        }
+
+        public static int CleanupOldBackups(string backupFolder)
+        {
+            if (!Directory.Exists(backupFolder))
+                return 0;
+
+            int deleted = 0;
+            foreach (var zipFile in Directory.GetFiles(backupFolder, "*.zip"))
+            {
+                try
+                {
+                    File.Delete(zipFile);
+                    deleted++;
+                }
+                catch
+                {
+                }
+            }
+            return deleted;
         }
 
         /// <inheritdoc />
